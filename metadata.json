@@ -1,0 +1,6 @@
+{
+  "name": "EventHub",
+  "description": "The central hub for campus event discovery and attendance. Find free food, workshops, and club meetings with ease.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": []
+}

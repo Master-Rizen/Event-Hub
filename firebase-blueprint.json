@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user profiles",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "fullName": { "type": "string" },
+        "universityDomain": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "club", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "universityDomain", "role", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Campus event details",
+      "type": "object",
+      "properties": {
+        "organizerId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "locationType": { "type": "string", "enum": ["indoor", "outdoor"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "capacity": { "type": "number" },
+        "isCancelled": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "published", "rejected"] },
+        "approvedBy": { "type": "string" },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "rejectionReason": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "weatherSuggestion": { "type": "string" },
+        "qrSecret": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["organizerId", "title", "location", "startTime", "endTime"]
+    },
+    "RSVP": {
+      "title": "RSVP",
+      "description": "User RSVP for an event",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "status": { "type": "string", "enum": ["going", "waitlist"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventId", "status", "createdAt"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Check-in record",
+      "type": "object",
+      "properties": {
+        "rsvpId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "checkedInAt": { "type": "string", "format": "date-time" },
+        "checkInMethod": { "type": "string", "enum": ["qr", "manual"] }
+      },
+      "required": ["rsvpId", "eventId", "checkedInAt", "checkInMethod"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profiles"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Main events collection"
+    },
+    "/rsvps/{rsvpId}": {
+      "schema": "RSVP",
+      "description": "Global RSVPs table for easy querying"
+    },
+    "/events/{eventId}/attendances/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "Attendances for a specific event"
+    }
+  }
+}

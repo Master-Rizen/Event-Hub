@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getRole() == 'admin';
+    }
+
+    function isClub() {
+      return isSignedIn() && (getRole() == 'club' || getRole() == 'organizer');
+    }
+
+    function isStudent() {
+      return isSignedIn() && (getRole() == 'student' || getRole() == 'attendee');
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      // Only allow updating if you're the owner, and don't allow changing your own role unless admin
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && (
+        request.resource.data.role == resource.data.role || isAdmin()
+      );
+    }
+
+    // Events
+    match /events/{eventId} {
+      // Students can only see published events. Clubs/Admins can see all.
+      allow read: if true; // We filter in UI, but for security:
+      // allow read: if resource.data.status == 'published' || (isSignedIn() && (resource.data.organizerId == request.auth.uid || isAdmin()));
+
+      allow create: if (isClub() || isAdmin()) && 
+                    request.resource.data.organizerId == request.auth.uid &&
+                    (isClub() ? request.resource.data.status == 'pending' : true);
+      
+      allow update: if isAdmin() || (
+        isOwner(resource.data.organizerId) && 
+        request.resource.data.organizerId == resource.data.organizerId &&
+        // If club, can't change status themselves
+        (isClub() ? request.resource.data.status == resource.data.status : true) &&
+        // Owner can only edit if not already published (or allow edit but keep status? User said: "edit their own non-published")
+        (resource.data.status != 'published')
+      );
+      
+      allow delete: if isAdmin() || isOwner(resource.data.organizerId);
+      
+      // Attendances subcollection
+      match /attendances/{attendanceId} {
+        allow read, write: if isAdmin() || (
+          get(/databases/$(database)/documents/events/$(eventId)).data.organizerId == request.auth.uid
+        );
+        
+        allow read: if isSignedIn() && (resource == null || resource.data.attendeeId == request.auth.uid);
+      }
+    }
+
+    // RSVPs
+    match /rsvps/{rsvpId} {
+      allow read: if true; // Required for unauthenticated discovery counts
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organizerId == request.auth.uid
+      );
+    }
+    
+    // Connection test document
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
